@@ -10,13 +10,13 @@ import beephone_shop_projects.core.admin.order_management.repository.impl.HinhTh
 import beephone_shop_projects.core.admin.order_management.repository.impl.OrderRepositoryImpl;
 import beephone_shop_projects.core.admin.order_management.service.impl.CartItemServiceImpl;
 import beephone_shop_projects.core.admin.order_management.service.impl.HoaDonServiceImpl;
-import beephone_shop_projects.core.admin.product_management.repository.SanPhamChiTietRepository;
+import beephone_shop_projects.core.admin.product_management.repository.ProductDetailRepository;
 import beephone_shop_projects.core.common.base.ResponseObject;
-import beephone_shop_projects.entity.GioHangChiTiet;
 import beephone_shop_projects.entity.HinhThucThanhToan;
 import beephone_shop_projects.entity.HoaDon;
 import beephone_shop_projects.infrastructure.constant.HttpStatus;
 import beephone_shop_projects.infrastructure.constant.Message;
+import beephone_shop_projects.repository.ISanPhamChiTietRepository;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -39,7 +39,7 @@ import java.util.Optional;
 public class TestController {
 
   @Autowired
-  private SanPhamChiTietRepository sanPhamChiTietRepository;
+  private ProductDetailRepository sanPhamChiTietRepository;
 
   @Autowired
   private CartItemRepository cartItemRepository;
