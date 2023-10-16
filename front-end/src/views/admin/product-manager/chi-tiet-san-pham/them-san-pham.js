@@ -7,22 +7,16 @@ import InputLabel from "@mui/material/InputLabel";
 import FormControl from "@mui/material/FormControl";
 import Box from "@mui/material/Box";
 import CurrencyInput from "react-currency-input-field";
+import { FormLabel } from "react-bootstrap";
 import {
   faPlus,
   faTrashAlt,
   faCheck,
   faThumbtack,
   faMinus,
-  faCircleXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { storage } from "./firebase";
-import {
-  ref,
-  uploadBytes,
-  listAll,
-  getDownloadURL,
-  deleteObject,
-} from "firebase/storage";
+import { ref, uploadBytes, listAll, getDownloadURL } from "firebase/storage";
 import {
   apiURLCamera,
   apiURLCauHinh,
@@ -30,7 +24,7 @@ import {
   apiURLDongSanPham,
   apiURLManHinh,
   apiURLMauSac,
-  apiURLNhaSanXuat,
+  apiURLHang,
   apiURLPin,
   apiURLram,
   apiURLrom,
@@ -49,6 +43,7 @@ import {
   Modal,
   Avatar,
   Segmented,
+  // Button,
   notification,
 } from "antd";
 import { useTheme } from "@mui/material/styles";
@@ -59,15 +54,16 @@ import {
   CheckOutlined,
 } from "@ant-design/icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import "../../../../assets/scss/addProduct.scss";
+import "../../../../assets/scss/addProduct.css";
 import Button from "@mui/material/Button";
 import { useNavigate } from "react-router-dom";
 import Chip from "@mui/material/Chip";
 import TextField from "@mui/material/TextField";
 import FormHelperText from "@mui/material/FormHelperText";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { set } from "lodash";
 
-const { TextArea } = Input;
-let index = 0;
 const Context = React.createContext({
   name: "Default",
 });
@@ -88,13 +84,14 @@ const ThemSanPham = () => {
   const [hiddenConfig, sethiddenConfig] = useState(false);
   const [listCauHinhSelected, setListCauHinhSelected] = useState([]);
 
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [nameStorage, setNameStorage] = useState("images/");
   const imageListRef = ref(storage, nameStorage);
   // modal
   const [open, setOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [openModalConfirm, setOpenModalConfirm] = useState(false)
   //hidden in cofig
   const [sizeOfListSelected, setSizeOfListSelected] = useState(0);
   // image
@@ -128,6 +125,15 @@ const ThemSanPham = () => {
     },
   };
 
+  // toast notification
+  const showNotification = (type, message) => {
+    if (type === "success") {
+      toast.success(message);
+    } else if (type === "error") {
+      toast.error(message);
+    }
+  };
+
   function getStyles(name, personName, theme) {
     return {
       fontWeight:
@@ -140,11 +146,11 @@ const ThemSanPham = () => {
   // modal nhà sản xuất
 
   const [nhaSanXuatForm, setNhaSanXuatForm] = useState({
-    maNhaSanXuat: "",
-    tenNhaSanXuat: "",
+    idBrand: "",
+    nameBrand: "",
   });
-
-  const { maNhaSanXuat, tenNhaSanXuat } = nhaSanXuatForm; // tạo contructor
+  const [nameBrandError, setnameBrandError] = useState("");
+  const { idBrand, nameBrand } = nhaSanXuatForm; // tạo contructor
 
   const onInputChangeFormNhaSanXuat = (e) => {
     setNhaSanXuatForm({ ...nhaSanXuatForm, [e.target.name]: e.target.value });
@@ -152,16 +158,22 @@ const ThemSanPham = () => {
 
   const showModal = async () => {
     setOpen(true);
-    await axios
-      .get("http://localhost:8080/nha-san-xuat/new-code")
-      .then((res) => {
-        setNhaSanXuatForm({ ...nhaSanXuatForm, maNhaSanXuat: res.data });
-      })
-      .catch((res) => console.log(res));
   };
 
   const handleOk = async () => {
-    await axios.post("http://localhost:8080/nha-san-xuat/save", nhaSanXuatForm);
+    var flag = false;
+    if (!nhaSanXuatForm.nameBrand) {
+      setFormSubmitted(true);
+      setnameBrandError("Tên hãng không được bỏ trống");
+      flag = true;
+    }
+
+    if (flag == true) {
+      showNotification("error", "Đã có lỗi.Vui lòng kiểm tra và thử lại");
+      return;
+    }
+
+    await axios.post("http://localhost:8080/hang/save", nhaSanXuatForm);
     setConfirmLoading(true);
     setTimeout(() => {
       setOpen(false);
@@ -177,6 +189,7 @@ const ThemSanPham = () => {
     setOpenFormmauSac(false);
     setOpenFormpin(false);
     setOpenFormram(false);
+    setOpenFormrom(false);
   };
 
   // chip
@@ -184,24 +197,20 @@ const ThemSanPham = () => {
   const [openFormChip, setOpenFormChip] = useState(false);
 
   const [chipForm, setChipForm] = useState({
-    maChip: "",
-    tenChip: "",
+    idChip: "",
+    nameChip: "",
   });
 
-  const { maChip, tenChip } = chipForm; // tạo contructor
+  const { idChip, nameChip } = chipForm; // tạo contructor
+  const [nameChipError, setnameChipError] = useState("");
 
   const onInputChangeFormChip = (e) => {
-    setChipForm({ ...chipForm, tenChip: e.target.value });
+    setChipForm({ ...chipForm, nameChip: e.target.value });
   };
 
   const showModalFormChip = async () => {
     setOpenFormChip(true);
-    await axios
-      .get("http://localhost:8080/chip/new-code")
-      .then((res) => {
-        setChipForm({ ...chipForm, maChip: res.data });
-      })
-      .catch((res) => console.log(res));
+    setFormSubmitted(false);
   };
 
   const handleOkFormChip = async () => {
@@ -214,33 +223,26 @@ const ThemSanPham = () => {
   };
 
   // pin
-
   const [openFormpin, setOpenFormpin] = useState(false);
 
   const [pinForm, setpinForm] = useState({
-    mapin: "",
-    tenpin: "",
+    idPin: "",
+    capacityPin: "",
   });
 
-  const { mapin, tenpin } = pinForm; // tạo contructor
-
+  const { idPin, capacityPin } = pinForm; // tạo contructor
+  const [capacityPinError, setcapacityPinError] = useState("");
   const onInputChangeFormpin = (e) => {
     setpinForm({ ...pinForm, [e.target.name]: e.target.value });
   };
 
   const showModalFormpin = async () => {
     setOpenFormpin(true);
-
-    await axios
-      .get("http://localhost:8080/pin/new-code")
-      .then((res) => {
-        setpinForm({ ...pinForm, mapin: res.data });
-      })
-      .catch((res) => console.log(res));
+    setFormSubmitted(false);
   };
 
   const handleOkFormpin = async () => {
-    await axios.post("http://localhost:8080/pin/save-second", pinForm);
+    await axios.post("http://localhost:8080/pin/save", pinForm);
     setConfirmLoading(true);
     setTimeout(() => {
       setOpenFormpin(false);
@@ -253,11 +255,12 @@ const ThemSanPham = () => {
   const [openFormram, setOpenFormram] = useState(false);
 
   const [ramForm, setramForm] = useState({
-    maram: "",
-    tenram: "",
+    idRam: "",
+    nameRam: "",
   });
 
-  const { maram, tenram } = ramForm; // tạo contructor
+  const { idRam, nameRam } = ramForm; // tạo contructor
+  const [capacityRamError, setcapacityRamError] = useState("");
 
   const onInputChangeFormram = (e) => {
     setramForm({ ...ramForm, [e.target.name]: e.target.value });
@@ -265,16 +268,23 @@ const ThemSanPham = () => {
 
   const showModalFormram = async () => {
     setOpenFormram(true);
-
-    await axios
-      .get("http://localhost:8080/ram/new-code")
-      .then((res) => {
-        setramForm({ ...ramForm, maram: res.data });
-      })
-      .catch((res) => console.log(res));
+    setFormSubmittedConfig(false);
   };
   const handleOkFormram = async () => {
-    await axios.post("http://localhost:8080/ram/save-second", ramForm);
+    var flag = false;
+
+    if (!ramForm.capacityRam) {
+      setFormSubmitted(true);
+      setcapacityRamError("Kích thước ram không được bỏ trống");
+      flag = true;
+    }
+
+    if (flag == true) {
+      showNotification("error", "Đã có lỗi.Vui lòng kiểm tra và thử lại");
+      return;
+    }
+
+    await axios.post("http://localhost:8080/ram/save", ramForm);
     setConfirmLoading(true);
     setTimeout(() => {
       setOpenFormram(false);
@@ -285,13 +295,14 @@ const ThemSanPham = () => {
   //rom
 
   const [openFormrom, setOpenFormrom] = useState(false);
+  const [capacityRomError, setcapacityRomError] = useState("");
 
   const [romForm, setromForm] = useState({
-    marom: "",
-    tenrom: "",
+    idRom: "",
+    capacityRom: "",
   });
 
-  const { marom, tenrom } = romForm; // tạo contructor
+  const { idRom, capacityRom } = romForm; // tạo contructor
 
   const onInputChangeFormrom = (e) => {
     setromForm({ ...romForm, [e.target.name]: e.target.value });
@@ -299,17 +310,24 @@ const ThemSanPham = () => {
 
   const showModalFormrom = async () => {
     setOpenFormrom(true);
-
-    await axios
-      .get("http://localhost:8080/rom/new-code")
-      .then((res) => {
-        setromForm({ ...romForm, marom: res.data });
-      })
-      .catch((res) => console.log(res));
+    setFormSubmittedConfig(false);
   };
 
   const handleOkFormrom = async () => {
-    await axios.post("http://localhost:8080/rom/save-second", romForm);
+    var flag = false;
+
+    if (!romForm.capacityRom) {
+      setFormSubmitted(true);
+      setcapacityRomError("Kích thước không được bỏ trống");
+      flag = true;
+    }
+
+    if (flag == true) {
+      showNotification("error", "Đã có lỗi.Vui lòng kiểm tra và thử lại");
+      return;
+    }
+
+    await axios.post("http://localhost:8080/rom/save", romForm);
     setConfirmLoading(true);
     setTimeout(() => {
       setOpenFormrom(false);
@@ -321,11 +339,12 @@ const ThemSanPham = () => {
   const [openFormmauSac, setOpenFormmauSac] = useState(false);
 
   const [mauSacForm, setmauSacForm] = useState({
-    mamauSac: "",
-    tenmauSac: "",
+    idColor: "",
+    nameColor: "",
   });
 
-  const { mamauSac, tenmauSac } = mauSacForm; // tạo contructor
+  const { idColor, nameColor } = mauSacForm; // tạo contructor
+  const [nameColorError, setnameColorError] = useState("");
 
   const onInputChangeFormmauSac = (e) => {
     setmauSacForm({ ...mauSacForm, [e.target.name]: e.target.value });
@@ -333,17 +352,24 @@ const ThemSanPham = () => {
 
   const showModalFormmauSac = async () => {
     setOpenFormmauSac(true);
-
-    await axios
-      .get("http://localhost:8080/mau-sac/new-code")
-      .then((res) => {
-        setmauSacForm({ ...mauSacForm, mamauSac: res.data });
-      })
-      .catch((res) => console.log(res));
+    setFormSubmittedConfig(false);
   };
 
   const handleOkFormmauSac = async () => {
-    await axios.post("http://localhost:8080/mau-sac/save-second", mauSacForm);
+    var flag = false;
+
+    if (!mauSacForm.nameColor) {
+      setFormSubmitted(true);
+      setnameColorError("Tên màu không được bỏ trống");
+      flag = true;
+    }
+
+    if (flag == true) {
+      showNotification("error", "Đã có lỗi.Vui lòng kiểm tra và thử lại");
+      return;
+    }
+
+    await axios.post("http://localhost:8080/mau-sac/save", mauSacForm);
     setConfirmLoading(true);
     setTimeout(() => {
       setOpenFormmauSac(false);
@@ -355,13 +381,15 @@ const ThemSanPham = () => {
   const [openFormmanHinh, setOpenFormmanHinh] = useState(false);
 
   const [manHinhForm, setmanHinhForm] = useState({
-    mamanHinh: "",
-    tenmanHinh: "",
+    idDisplay: "",
+    sizeDisplay: "",
+    resolutionDisplay: "",
   });
 
-  const { mamanHinh, tenmanHinh } = manHinhForm; // tạo contructor
+  const { idDisplay, sizeDisplay, resolutionDisplay } = manHinhForm; // tạo contructor
 
   const [cameraForm, setCameraForm] = useState({
+    idCamera: "",
     resolutionCamera: "",
   });
   const [openFormCamera, setOpenFormCamera] = useState(false);
@@ -372,6 +400,7 @@ const ThemSanPham = () => {
 
   const showModalFormCamera = () => {
     setOpenFormCamera(true);
+    setFormSubmitted(false);
   };
   const handleOkFormCamera = () => {
     if (!cameraForm.resolutionCamera) {
@@ -384,27 +413,45 @@ const ThemSanPham = () => {
     setTimeout(() => {
       setLoading(false);
       setOpenFormCamera(false);
+      loadDataComboBox();
     }, 300);
   };
   const handleCancelFormCamera = () => {
     setOpenFormCamera(false);
   };
+
+  const [sizeDisplayError, setsizeDisplayError] = useState("");
+  const [resolutionDisplayError, setresolutionDisplayError] = useState("");
+
   const onInputChangeFormmanHinh = (e) => {
     setmanHinhForm({ ...manHinhForm, [e.target.name]: e.target.value });
   };
 
   const showModalFormmanHinh = async () => {
     setOpenFormmanHinh(true);
-
-    await axios
-      .get("http://localhost:8080/man-hinh/new-code")
-      .then((res) => {
-        setmanHinhForm({ ...manHinhForm, mamanHinh: res.data });
-      })
-      .catch((res) => console.log(res));
+    setFormSubmitted(false);
   };
   const handleOkFormmanHinh = async () => {
-    await axios.post("http://localhost:8080/man-hinh/save-second", manHinhForm);
+    var flag = false;
+
+    if (!manHinhForm.sizeDisplay) {
+      setFormSubmitted(true);
+      setsizeDisplayError("Kích thước không được bỏ trống");
+      flag = true;
+    }
+
+    if (!manHinhForm.resolutionDisplay) {
+      setFormSubmitted(true);
+      setsizeDisplayError("Độ phân giải không được bỏ trống");
+      flag = true;
+    }
+
+    if (flag == true) {
+      showNotification("error", "Đã có lỗi.Vui lòng kiểm tra và thử lại");
+      return;
+    }
+
+    await axios.post("http://localhost:8080/man-hinh/save", manHinhForm);
     setConfirmLoading(true);
     setTimeout(() => {
       setOpenFormmanHinh(false);
@@ -415,13 +462,14 @@ const ThemSanPham = () => {
   // dòng sản phẩm
 
   const [openFormDongSanPham, setOpenFormDongSanPham] = useState(false);
+  const [nameProductLineError, setnameProductLineError] = useState("");
 
   const [DongSanPhamForm, setDongSanPhamForm] = useState({
-    maDongSanPham: "",
-    tenDongSanPham: "",
+    idProductLine: "",
+    nameProductLine: "",
   });
 
-  const { maDongSanPham, tenDongSanPham } = DongSanPhamForm; // tạo contructor
+  const { idProductLine, nameProductLine } = DongSanPhamForm; // tạo contructor
 
   const onInputChangeFormDongSanPham = (e) => {
     setDongSanPhamForm({ ...DongSanPhamForm, [e.target.name]: e.target.value });
@@ -429,15 +477,22 @@ const ThemSanPham = () => {
 
   const showModalFormDongSanPham = async () => {
     setOpenFormDongSanPham(true);
-
-    await axios
-      .get("http://localhost:8080/dong-san-pham/new-code")
-      .then((res) => {
-        setDongSanPhamForm({ ...DongSanPhamForm, maDongSanPham: res.data });
-      })
-      .catch((res) => console.log(res));
+    setFormSubmittedConfig(false);
   };
   const handleOkFormDongSanPham = async () => {
+    var flag = false;
+
+    if (!DongSanPhamForm.nameProductLine) {
+      setFormSubmitted(true);
+      setnameProductLineError("Tên dòng sản phẩm không được bỏ trống");
+      flag = true;
+    }
+
+    if (flag == true) {
+      showNotification("error", "Đã có lỗi.Vui lòng kiểm tra và thử lại");
+      return;
+    }
+
     await axios.post(
       "http://localhost:8080/dong-san-pham/save",
       DongSanPhamForm
@@ -454,6 +509,7 @@ const ThemSanPham = () => {
 
   const showModalFormCauHinh = () => {
     setOpenFormCauHinh(true);
+    setFormSubmittedConfig(false);
   };
   // notification
   const openNotificationError = (placement, title, content) => {
@@ -537,7 +593,7 @@ const ThemSanPham = () => {
 
   const loadDataListCauHinh = async (currentPage) => {
     axios
-      .get(apiURLCauHinh + "/view-all?page=" + currentPage)
+      .get(apiURLCauHinh + "/view-all?page=1")
       .then((response) => {
         const modifiedData = response.data.content.map((item, index) => ({
           ...item,
@@ -823,15 +879,16 @@ const ThemSanPham = () => {
           label: item.tenDongSanPham,
           value: "dongSanPham:" + item.tenDongSanPham,
         }));
+        console.log(apiURLDongSanPham);
         setListDongSanPham(modifiedData);
       })
       .catch((res) => console.log(res));
     axios
-      .get(apiURLNhaSanXuat + "/get-list")
+      .get(apiURLHang + "/get-list")
       .then((response) => {
         const modifiedData = response.data.map((item, index) => ({
-          label: item.tenNhaSanXuat,
-          value: "nhaSanXuat:" + item.tenNhaSanXuat,
+          label: item.tenHang,
+          value: "nhaSanXuat:" + item.tenHang,
         }));
         setlistNhaSanXuat(modifiedData);
       })
@@ -896,7 +953,7 @@ const ThemSanPham = () => {
       .get(apiURLManHinh + "/get-list")
       .then((response) => {
         const modifiedData = response.data.map((item, index) => ({
-          label: item.kichThuoc + " inch",
+          label: item.kichThuoc + " inch - "+ item.doPhanGiai,
           value: "manHinh:" + item.kichThuoc,
         }));
         setlistManHinh(modifiedData);
@@ -943,6 +1000,7 @@ const ThemSanPham = () => {
       .post("http://localhost:8080/san-pham/save", chiTietSanPham)
       .then((res) => {
         {
+          console.log(res.data.id);
           listCauHinhSelected.forEach((item) => {
             item.idSanPham = res.data.id;
           });
@@ -971,10 +1029,11 @@ const ThemSanPham = () => {
         })
         .catch((res) => console.log(res));
     });
-    openNotificationSuccess("success", "Bạn đã tạo sản phẩm thành công ", "");
+    showNotification("success", "Bạn đã thêm rom thành công")
     setTimeout(() => {
       navigate("/san-pham");
     }, 200);
+    return;
   };
 
   return (
@@ -1254,7 +1313,9 @@ const ThemSanPham = () => {
                       value={chiTietSanPham.cameraTruoc}
                       onChange={handleChangeSelectMultipleFront}
                       renderValue={(selected) => (
-                        <Box>
+                        <Box
+                          sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}
+                        >
                           {selected.map((value) => (
                             <Chip key={value} label={value} />
                           ))}
@@ -1277,7 +1338,7 @@ const ThemSanPham = () => {
                         (formSubmitted &&
                           chiTietSanPham.cameraTruoc.length === 0 &&
                           `
-                                                     Camera trước không được để trống
+                           Camera trước không được để trống
                                                   `)}
                     </FormHelperText>
                   </Form.Group>
@@ -1410,38 +1471,63 @@ const ThemSanPham = () => {
                       onClick={showModal}
                     />
                     <Modal
-                      title="Thêm nhà sản xuất"
+                      title="Thêm hãng"
                       open={open}
-                      onOk={handleOk}
                       confirmLoading={confirmLoading}
                       onCancel={handleCancel}
+                      footer={[
+                        <Button
+                          type="danger"
+                          style={{ height: 40, marginRight: `3%` }}
+                          onClick={handleCancel}
+                        >
+                          Huỷ
+                        </Button>,
+                        <Button
+                          type="primary"
+                          loading={loading}
+                          style={{ height: 40, marginRight: `36%` }}
+                          onClick={handleOk}
+                        >
+                          + Thêm mới
+                        </Button>,
+                      ]}
                     >
                       <p>
-                        <Form>
-                          <Form.Group className="form-group">
-                            <Form.Label htmlFor="email">Mã</Form.Label>
-                            <Form.Control
-                              type="text"
-                              placeholder="Nhập mã "
-                              name="maNhaSanXuat"
-                              value={maNhaSanXuat}
-                              id="maNhaSanXuat"
-                            />
-                          </Form.Group>
-                          <Form.Group className="form-group">
-                            <Form.Label htmlFor="pwd">
-                              Tên nhà sản xuất
-                            </Form.Label>
-                            <Form.Control
-                              type="text"
-                              placeholder="Nhập tên nhà sản xuất)"
-                              name="tenNhaSanXuat"
-                              value={tenNhaSanXuat}
-                              onChange={(e) => onInputChangeFormNhaSanXuat(e)}
-                              id="ten`"
-                            />
-                          </Form.Group>
-                        </Form>
+                        <h2
+                          style={{
+                            marginBottom: `2%`,
+                            textAlign: `center`,
+                            fontSize: `27px`,
+                          }}
+                        >
+                          Thêm hãng
+                        </h2>
+
+                        <FormLabel
+                          style={{ marginLeft: `9px`, fontSize: `14px` }}
+                        >
+                          {" "}
+                          Tên hãng{" "}
+                        </FormLabel>
+                        <TextField
+                          label=""
+                          id="fullWidth"
+                          name="nameBrand"
+                          value={nhaSanXuatForm.nameBrand}
+                          onChange={(e) => onInputChangeFormNhaSanXuat(e)}
+                          error={
+                            (formSubmitted && !nhaSanXuatForm.nameBrand) ||
+                            !!nameBrandError
+                          }
+                          helperText={
+                            nameBrandError ||
+                            (formSubmitted &&
+                              !nhaSanXuatForm.nameBrand &&
+                              "Tên hãng không được trống")
+                          }
+                          style={{ width: "100%" }}
+                        />
                       </p>
                     </Modal>
 
@@ -1453,7 +1539,7 @@ const ThemSanPham = () => {
                         id="demo-simple-select-standard-label"
                         className="inputlabel_of_selection"
                       >
-                        Nhà sản xuất
+                        Hãng
                       </InputLabel>
                       <Select
                         error={
@@ -1463,7 +1549,7 @@ const ThemSanPham = () => {
                         className="selection_custom"
                         labelId="demo-simple-select-standard-label"
                         id="demo-simple-select-filled"
-                        // value={tenram}
+                        // value={nameRam}
                         onChange={handleChange}
                       >
                         {listNhaSanXuat.map((item, index) => {
@@ -1477,7 +1563,7 @@ const ThemSanPham = () => {
                           (formSubmitted &&
                             !chiTietSanPham.nhaSanXuat &&
                             `
-                                                  Nhà sản xuất không được để trống
+                                                  hãng không được để trống
                                                   `)}
                       </FormHelperText>
                     </FormControl>
@@ -1494,35 +1580,60 @@ const ThemSanPham = () => {
                     <Modal
                       title="Thêm chip"
                       open={openFormChip}
-                      onOk={handleOkFormChip}
                       confirmLoading={confirmLoading}
                       onCancel={handleCancel}
+                      footer={[
+                        <Button
+                          type="danger"
+                          style={{ height: 40, marginRight: `3%` }}
+                          onClick={handleCancel}
+                        >
+                          Huỷ
+                        </Button>,
+                        <Button
+                          type="primary"
+                          loading={loading}
+                          style={{ height: 40, marginRight: `36%` }}
+                          onClick={handleOkFormChip}
+                        >
+                          + Thêm mới
+                        </Button>,
+                      ]}
                     >
-                      <p>
-                        <Form>
-                          <Form.Group className="form-group">
-                            <Form.Label htmlFor="email">Mã</Form.Label>
-                            <Form.Control
-                              type="text"
-                              placeholder="Nhập mã sản phẩm"
-                              name="maNhaSanXuat"
-                              value={maChip}
-                              id="maNhaSanXuat"
-                            />
-                          </Form.Group>
-                          <Form.Group className="form-group">
-                            <Form.Label htmlFor="pwd">Tên chip</Form.Label>
-                            <Form.Control
-                              type="text"
-                              placeholder="Nhập chip"
-                              name="tenChip"
-                              value={tenChip}
-                              onChange={(e) => onInputChangeFormChip(e)}
-                              id="tenChip`"
-                            />
-                          </Form.Group>
-                        </Form>
-                      </p>
+                      <h2
+                        style={{
+                          marginBottom: `2%`,
+                          textAlign: `center`,
+                          fontSize: `27px`,
+                        }}
+                      >
+                        Thêm chip
+                      </h2>
+
+                      <FormLabel
+                        style={{ marginLeft: `9px`, fontSize: `14px` }}
+                      >
+                        {" "}
+                        Tên chip{" "}
+                      </FormLabel>
+                      <TextField
+                        label=""
+                        id="fullWidth"
+                        name="nameChip"
+                        value={chipForm.nameChip}
+                        onChange={(e) => onInputChangeFormChip(e)}
+                        error={
+                          (formSubmitted && !chipForm.nameChip) ||
+                          !!nameChipError
+                        }
+                        helperText={
+                          nameChipError ||
+                          (formSubmitted &&
+                            !chipForm.nameChip &&
+                            "Tên chip không được trống")
+                        }
+                        style={{ width: "100%" }}
+                      />
                     </Modal>
 
                     <FormControl
@@ -1542,7 +1653,7 @@ const ThemSanPham = () => {
                         className="selection_custom"
                         labelId="demo-simple-select-standard-label-chip"
                         id="demo-simple-select-filled"
-                        // value={tenram}
+                        // value={nameRam}
                         onChange={handleChange}
                       >
                         {listChip.map((item, index) => {
@@ -1573,38 +1684,60 @@ const ThemSanPham = () => {
                     <Modal
                       title="Thêm dòng sản phẩm"
                       open={openFormDongSanPham}
-                      onOk={handleOkFormDongSanPham}
                       confirmLoading={confirmLoading}
                       onCancel={handleCancel}
+                      footer={[
+                        <Button
+                          type="danger"
+                          style={{ height: 40, marginRight: `3%` }}
+                          onClick={handleCancel}
+                        >
+                          Huỷ
+                        </Button>,
+                        <Button
+                          type="primary"
+                          loading={loading}
+                          style={{ height: 40, marginRight: `36%` }}
+                          onClick={handleOkFormDongSanPham}
+                        >
+                          + Thêm mới
+                        </Button>,
+                      ]}
                     >
-                      <p>
-                        <Form>
-                          <Form.Group className="form-group">
-                            <Form.Label htmlFor="email">Mã</Form.Label>
-                            <Form.Control
-                              type="text"
-                              placeholder="Nhập mã dòng sản phẩm"
-                              name="maDongSanPham"
-                              value={maDongSanPham}
-                              onChange={(e) => onInputChangeFormDongSanPham(e)}
-                              id="maDongSanPham"
-                            />
-                          </Form.Group>
-                          <Form.Group className="form-group">
-                            <Form.Label htmlFor="pwd">
-                              Tên dòng sản phẩm
-                            </Form.Label>
-                            <Form.Control
-                              type="text"
-                              placeholder="Nhập tên nhà sản xuất)"
-                              name="tenDongSanPham"
-                              value={tenDongSanPham}
-                              onChange={(e) => onInputChangeFormDongSanPham(e)}
-                              id="ten`"
-                            />
-                          </Form.Group>
-                        </Form>
-                      </p>
+                      <h2
+                        style={{
+                          marginBottom: `2%`,
+                          textAlign: `center`,
+                          fontSize: `27px`,
+                        }}
+                      >
+                        Thêm dòng sản phẩm
+                      </h2>
+
+                      <FormLabel
+                        style={{ marginLeft: `9px`, fontSize: `14px` }}
+                      >
+                        {" "}
+                        Tên dòng sản phẩm{" "}
+                      </FormLabel>
+                      <TextField
+                        label=""
+                        id="fullWidth"
+                        name="nameProductLine"
+                        value={DongSanPhamForm.nameProductLine}
+                        onChange={(e) => onInputChangeFormDongSanPham(e)}
+                        error={
+                          (formSubmitted && !DongSanPhamForm.nameProductLine) ||
+                          !!nameProductLineError
+                        }
+                        helperText={
+                          nameProductLineError ||
+                          (formSubmitted &&
+                            !DongSanPhamForm.nameProductLine &&
+                            "Tên dòng sản phẩm không được trống")
+                        }
+                        style={{ width: "100%" }}
+                      />
                     </Modal>
 
                     <FormControl
@@ -1625,7 +1758,7 @@ const ThemSanPham = () => {
                         className="selection_custom"
                         labelId="demo-simple-select-standard-label-chip"
                         id="demo-simple-select-filled"
-                        // value={tenram}
+                        // value={nameRam}
                         onChange={handleChange}
                       >
                         {listDongSanPham.map((item, index) => {
@@ -1658,36 +1791,86 @@ const ThemSanPham = () => {
                     <Modal
                       title="Thêm màn hình"
                       open={openFormmanHinh}
-                      onOk={handleOkFormmanHinh}
                       confirmLoading={confirmLoading}
                       onCancel={handleCancel}
+                      footer={[
+                        <Button
+                          type="danger"
+                          style={{ height: 40, marginRight: `3%` }}
+                          onClick={handleCancel}
+                        >
+                          Huỷ
+                        </Button>,
+                        <Button
+                          type="primary"
+                          loading={loading}
+                          style={{ height: 40, marginRight: `36%` }}
+                          onClick={handleOkFormmanHinh}
+                        >
+                          + Thêm mới
+                        </Button>,
+                      ]}
                     >
-                      <p>
-                        <Form>
-                          <Form.Group className="form-group">
-                            <Form.Label htmlFor="email">Mã</Form.Label>
-                            <Form.Control
-                              type="text"
-                              name="mamanHinh"
-                              value={mamanHinh}
-                              id="mamanHinh"
-                            />
-                          </Form.Group>
-                          <Form.Group className="form-group">
-                            <Form.Label htmlFor="pwd">
-                              Kích thước màn hình:
-                            </Form.Label>
-                            <Form.Control
-                              type="text"
-                              placeholder="Nhập kích cỡ màn hình"
-                              name="tenmanHinh"
-                              value={tenmanHinh}
-                              onChange={(e) => onInputChangeFormmanHinh(e)}
-                              id="ten`"
-                            />
-                          </Form.Group>
-                        </Form>
-                      </p>
+                      <h2
+                        style={{
+                          marginBottom: `2%`,
+                          textAlign: `center`,
+                          fontSize: `27px`,
+                        }}
+                      >
+                        Thêm màn hình
+                      </h2>
+
+                      <FormLabel
+                        style={{ marginLeft: `9px`, fontSize: `14px` }}
+                      >
+                        {" "}
+                        Kích cỡ màn hình{" "}
+                      </FormLabel>
+                      <TextField
+                        label=""
+                        id="fullWidth"
+                        name="sizeDisplay"
+                        value={manHinhForm.sizeDisplay}
+                        onChange={(e) => onInputChangeFormmanHinh(e)}
+                        error={
+                          (formSubmitted && !manHinhForm.sizeDisplay) ||
+                          !!sizeDisplayError
+                        }
+                        helperText={
+                          sizeDisplayError ||
+                          (formSubmitted &&
+                            !manHinhForm.sizeDisplay &&
+                            "Kích cỡ màn hình không được trống")
+                        }
+                        style={{ width: "100%" }}
+                      />
+
+                      <br />
+                      <FormLabel
+                        style={{ marginLeft: `9px`, fontSize: `14px` }}
+                      >
+                        {" "}
+                        Độ phân giải màn hình{" "}
+                      </FormLabel>
+                      <TextField
+                        label=""
+                        id="fullWidth"
+                        name="resolutionDisplay"
+                        value={manHinhForm.resolutionDisplay}
+                        onChange={(e) => onInputChangeFormmanHinh(e)}
+                        error={
+                          (formSubmitted && !manHinhForm.resolutionDisplay) ||
+                          !!resolutionDisplayError
+                        }
+                        helperText={
+                          resolutionDisplayError ||
+                          (formSubmitted &&
+                            !manHinhForm.resolutionDisplay &&
+                            "Độ phân phải màn hình không được trống")
+                        }
+                        style={{ width: "100%" }}
+                      />
                     </Modal>
 
                     <FormControl
@@ -1714,7 +1897,7 @@ const ThemSanPham = () => {
                         className="selection_custom"
                         labelId="demo-simple-select-standard-label-chip"
                         id="demo-simple-select-filled"
-                        // value={tenram}
+                        // value={nameRam}
                         onChange={handleChange}
                       >
                         {listManHinh.map((item, index) => {
@@ -1744,37 +1927,60 @@ const ThemSanPham = () => {
                     <Modal
                       title="Thêm dung lượng pin"
                       open={openFormpin}
-                      onOk={handleOkFormpin}
                       confirmLoading={confirmLoading}
                       onCancel={handleCancel}
+                      footer={[
+                        <Button
+                          type="danger"
+                          style={{ height: 40, marginRight: `3%` }}
+                          onClick={handleCancel}
+                        >
+                          Huỷ
+                        </Button>,
+                        <Button
+                          type="primary"
+                          loading={loading}
+                          style={{ height: 40, marginRight: `36%` }}
+                          onClick={handleOkFormpin}
+                        >
+                          + Thêm mới
+                        </Button>,
+                      ]}
                     >
-                      <p>
-                        <Form>
-                          <Form.Group className="form-group">
-                            <Form.Label htmlFor="email">Mã pin</Form.Label>
-                            <Form.Control
-                              type="text"
-                              placeholder="Nhập pin"
-                              name="mapin"
-                              value={mapin}
-                              id="mapin"
-                            />
-                          </Form.Group>
-                          <Form.Group className="form-group">
-                            <Form.Label htmlFor="pwd">
-                              Dung luợng pin
-                            </Form.Label>
-                            <Form.Control
-                              type="text"
-                              placeholder="Nhập dung lượng pin)"
-                              name="tenpin"
-                              value={tenpin}
-                              onChange={(e) => onInputChangeFormpin(e)}
-                              id="ten`"
-                            />
-                          </Form.Group>
-                        </Form>
-                      </p>
+                      <h2
+                        style={{
+                          marginBottom: `2%`,
+                          textAlign: `center`,
+                          fontSize: `27px`,
+                        }}
+                      >
+                        Thêm pin
+                      </h2>
+
+                      <FormLabel
+                        style={{ marginLeft: `9px`, fontSize: `14px` }}
+                      >
+                        {" "}
+                        Dung lượng pin{" "}
+                      </FormLabel>
+                      <TextField
+                        label=""
+                        id="fullWidth"
+                        name="capacityPin"
+                        value={pinForm.capacityPin}
+                        onChange={(e) => onInputChangeFormpin(e)}
+                        error={
+                          (formSubmitted && !pinForm.capacityPin) ||
+                          !!capacityPinError
+                        }
+                        helperText={
+                          capacityPinError ||
+                          (formSubmitted &&
+                            !pinForm.capacityPin &&
+                            "Dung lượng pin không được trống")
+                        }
+                        style={{ width: "100%" }}
+                      />
                     </Modal>
 
                     <FormControl
@@ -1794,7 +2000,7 @@ const ThemSanPham = () => {
                         className="selection_custom"
                         labelId="demo-simple-select-standard-label-pin"
                         id="demo-simple-select-filled"
-                        // value={tenram}
+                        // value={nameRam}
                         onChange={handleChange}
                       >
                         {listPin.map((item, index) => {
@@ -1819,11 +2025,14 @@ const ThemSanPham = () => {
               <Button
                 variant="contained"
                 endIcon={<ArrowRightOutlined />}
+                key="submit"
+                type="primary"
                 style={{
-                  width: `14%`,
+                  width: `15%`,
                   fontSize: `89%`,
                   transform: `translateX(280%)`,
                   marginBottom: `2%`,
+                  height: 40,
                 }}
                 onClick={() => handleClickStepTwo()}
               >
@@ -1927,12 +2136,90 @@ const ThemSanPham = () => {
                                               handleClickExitForm(item.id)
                                             }
                                           />
+
+                                          {/* price of products */}
+                                          <Row>
+                                            <Col span={4}>
+                                              <Form.Label
+                                                htmlFor="pwd"
+                                                style={{
+                                                  width: 150,
+                                                  color: "black",
+                                                }}
+                                              >
+                                                Đơn giá
+                                              </Form.Label>
+                                            </Col>
+                                            <Col span={20}>
+                                              <CurrencyInput
+                                                id="input-example"
+                                                name="input-name"
+                                                suffix=" VND"
+                                                className=" form-control d-inline-block"
+                                                style={{ width: `100%` }}
+                                                placeholder="Vui lòng nhập số tiền "
+                                                defaultValue={1000}
+                                                decimalsLimit={2}
+                                                onValueChange={(
+                                                  value,
+                                                  name
+                                                ) => {
+                                                  item.donGia = value;
+                                                }}
+                                              />
+                                            </Col>
+                                          </Row>
+
+                                          {/* quantity of products */}
+                                          <Row style={{ marginTop: 20 }}>
+                                            <Col span={4}>
+                                              <Form.Label
+                                                htmlFor="pwd"
+                                                style={{
+                                                  width: 150,
+                                                  color: "black",
+                                                }}
+                                              >
+                                                {" "}
+                                                Số lượng{" "}
+                                              </Form.Label>
+                                            </Col>
+                                            <Col span={20}>
+                                              <Form.Control
+                                                type="number"
+                                                className=" form-control d-inline-block"
+                                                style={{ width: `50%` }}
+                                                placeholder="Nhập số lượng sản phẩm"
+                                                name=""
+                                                onBlur={(value) => {
+                                                  item.soLuong =
+                                                    value.target.value;
+                                                }}
+                                                id="quantity`"
+                                              />
+                                              <Button
+                                                className="btn-them-tu-file"
+                                                variant="contained"
+                                                style={{
+                                                  height: "39px",
+                                                  width: "auto",
+                                                  fontSize: "15px",
+                                                  marginLeft: 20,
+                                                  transform: `translateY(-3px)`,
+                                                }}
+                                              >
+                                                {/* <ExcelExportHelper data={listMauSac} /> */}{" "}
+                                                + Thêm imei
+                                              </Button>
+                                            </Col>
+                                          </Row>
+
                                           <Form.Label
                                             htmlFor="pwd"
                                             style={{
                                               width: 150,
                                               color: "black",
-                                              transform: `translate(-26px, -1px)`,
+                                              transform: `translate(0px, 24px)`,
                                             }}
                                           >
                                             Thêm ảnh
@@ -2328,32 +2615,6 @@ const ThemSanPham = () => {
                                         {/* nhập số lượng và giá của từng sp */}
 
                                         <Row>
-                                          <Col span={12}>
-                                            <Form.Group className="form-group">
-                                              <Form.Label
-                                                htmlFor="pwd"
-                                                style={{
-                                                  width: 150,
-                                                  color: "black",
-                                                }}
-                                              >
-                                                Số lượng
-                                              </Form.Label>
-                                              <Form.Control
-                                                type="number"
-                                                className=" form-control d-inline-block"
-                                                style={{ width: 400 }}
-                                                placeholder="Nhập số lượng sản phẩm"
-                                                name=""
-                                                onBlur={(value) => {
-                                                  item.soLuong =
-                                                    value.target.value;
-                                                }}
-                                                id="quantity`"
-                                              />
-                                            </Form.Group>
-                                          </Col>
-
                                           {/* modal quantity */}
 
                                           <Modal
@@ -2370,24 +2631,25 @@ const ThemSanPham = () => {
                                                     item.imei.map(
                                                       (value, index) => {
                                                         return (
-                                                          <Row>
-                                                            <Col span="8">
-                                                              <Form.Label htmlFor="stt">
-                                                                Imei số {index}
-                                                              </Form.Label>
-                                                            </Col>
-                                                            <Col span="16">
-                                                              <Form.Control
-                                                                type="text"
-                                                                placeholder="Nhập imei "
-                                                                name="maNhaSanXuat"
-                                                                value={
-                                                                  maNhaSanXuat
-                                                                }
-                                                                id="maNhaSanXuat"
-                                                              />
-                                                            </Col>
-                                                          </Row>
+                                                          <></>
+                                                          //   <Row>
+                                                          //     <Col span="8">
+                                                          //       <Form.Label htmlFor="stt">
+                                                          //         Imei số {index}
+                                                          //       </Form.Label>
+                                                          //     </Col>
+                                                          //     <Col span="16">
+                                                          //       <Form.Control
+                                                          //         type="text"
+                                                          //         placeholder="Nhập imei "
+                                                          //         name="maNhaSanXuat"
+                                                          //         value={
+                                                          //           maNhaSanXuat
+                                                          //         }
+                                                          //         id="maNhaSanXuat"
+                                                          //       />
+                                                          //     </Col>
+                                                          //   </Row>
                                                         );
                                                       }
                                                     )}
@@ -2397,34 +2659,7 @@ const ThemSanPham = () => {
                                           </Modal>
 
                                           <Col span={12}>
-                                            <Form.Group className="form-group">
-                                              <Form.Label
-                                                htmlFor="pwd"
-                                                style={{
-                                                  width: 150,
-                                                  color: "black",
-                                                }}
-                                              >
-                                                Đơn giá{" "}
-                                              </Form.Label>
-
-                                              <CurrencyInput
-                                                id="input-example"
-                                                name="input-name"
-                                                suffix=" VND"
-                                                className=" form-control d-inline-block"
-                                                style={{ width: 400 }}
-                                                placeholder="Vui lòng nhập số tiền "
-                                                defaultValue={1000}
-                                                decimalsLimit={2}
-                                                onValueChange={(
-                                                  value,
-                                                  name
-                                                ) => {
-                                                  item.donGia = value;
-                                                }}
-                                              />
-                                            </Form.Group>
+                                            <Form.Group className="form-group"></Form.Group>
                                           </Col>
                                         </Row>
                                         <br />
@@ -2469,11 +2704,11 @@ const ThemSanPham = () => {
                                     color="success"
                                     endIcon={<CheckOutlined />}
                                     style={{
-                                      transform: `translate(404%, -1%)`,
+                                      transform: `translate(358%, -1%)`,
                                       fontSize: `16px`,
                                       marginBottom: `2%`,
                                     }}
-                                    onClick={() => handleClickStepThree()}
+                                    onClick={() => setOpenModalConfirm(true)}
                                   >
                                     Hoàn thành
                                   </Button>
@@ -2503,42 +2738,74 @@ const ThemSanPham = () => {
                                               <Modal
                                                 title="Thêm rom"
                                                 open={openFormrom}
-                                                onOk={handleOkFormrom}
                                                 confirmLoading={confirmLoading}
                                                 onCancel={handleCancel}
+                                                footer={[
+                                                  <Button
+                                                    type="danger"
+                                                    style={{
+                                                      height: 40,
+                                                      marginRight: `3%`,
+                                                    }}
+                                                    onClick={handleCancel}
+                                                  >
+                                                    Huỷ
+                                                  </Button>,
+                                                  <Button
+                                                    type="primary"
+                                                    loading={loading}
+                                                    style={{
+                                                      height: 40,
+                                                      marginRight: `36%`,
+                                                    }}
+                                                    onClick={handleOkFormrom}
+                                                  >
+                                                    + Thêm mới
+                                                  </Button>,
+                                                ]}
                                               >
-                                                <p>
-                                                  <Form>
-                                                    <Form.Group className="form-group">
-                                                      <Form.Label htmlFor="email">
-                                                        Mã
-                                                      </Form.Label>
-                                                      <Form.Control
-                                                        type="text"
-                                                        name="marom"
-                                                        value={marom}
-                                                        id="marom"
-                                                      />
-                                                    </Form.Group>
-                                                    <Form.Group className="form-group">
-                                                      <Form.Label htmlFor="pwd">
-                                                        Dung lượng ROM
-                                                      </Form.Label>
-                                                      <Form.Control
-                                                        type="text"
-                                                        placeholder="Nhập dung lượng rom"
-                                                        name="tenrom"
-                                                        value={tenrom}
-                                                        onChange={(e) =>
-                                                          onInputChangeFormrom(
-                                                            e
-                                                          )
-                                                        }
-                                                        id="ten`"
-                                                      />
-                                                    </Form.Group>
-                                                  </Form>
-                                                </p>
+                                                <h2
+                                                  style={{
+                                                    marginBottom: `2%`,
+                                                    textAlign: `center`,
+                                                    fontSize: `27px`,
+                                                  }}
+                                                >
+                                                  Thêm rom
+                                                </h2>
+
+                                                <FormLabel
+                                                  style={{
+                                                    marginLeft: `9px`,
+                                                    fontSize: `14px`,
+                                                  }}
+                                                >
+                                                  {" "}
+                                                  Kích thuớc rom{" "}
+                                                </FormLabel>
+                                                <TextField
+                                                  label=""
+                                                  id="fullWidth"
+                                                  name="capacityRom"
+                                                  value={romForm.capacityRom}
+                                                  onChange={(e) =>
+                                                    onInputChangeFormrom(
+                                                      e
+                                                    )
+                                                  }
+                                                  error={
+                                                    (formSubmitted &&
+                                                      !romForm.capacityRom) ||
+                                                    !!capacityRomError
+                                                  }
+                                                  helperText={
+                                                    capacityRomError ||
+                                                    (formSubmitted &&
+                                                      !romForm.capacityRom &&
+                                                      "Kích thước rom không được trống")
+                                                  }
+                                                  style={{ width: "100%" }}
+                                                />
                                               </Modal>
 
                                               <FormControl
@@ -2584,8 +2851,8 @@ const ThemSanPham = () => {
                                                     (formSubmitted &&
                                                       !cauHinh.rom &&
                                                       `
-                                                                                                              Bạn phải chọn một rom
-                                                                                                               `)}
+                                                         Bạn phải chọn một rom
+                                                           `)}
                                                 </FormHelperText>
                                               </FormControl>
                                             </Form.Group>
@@ -2601,42 +2868,72 @@ const ThemSanPham = () => {
                                               <Modal
                                                 title="Thêm dung lượng ram"
                                                 open={openFormram}
-                                                onOk={handleOkFormram}
                                                 confirmLoading={confirmLoading}
                                                 onCancel={handleCancel}
+                                                footer={[
+                                                  <Button
+                                                    type="danger"
+                                                    style={{
+                                                      height: 40,
+                                                      marginRight: `3%`,
+                                                    }}
+                                                    onClick={handleCancel}
+                                                  >
+                                                    Huỷ
+                                                  </Button>,
+                                                  <Button
+                                                    type="primary"
+                                                    loading={loading}
+                                                    style={{
+                                                      height: 40,
+                                                      marginRight: `36%`,
+                                                    }}
+                                                    onClick={handleOkFormram}
+                                                  >
+                                                    + Thêm mới
+                                                  </Button>,
+                                                ]}
                                               >
-                                                <p>
-                                                  <Form>
-                                                    <Form.Group className="form-group">
-                                                      <Form.Label htmlFor="email">
-                                                        Mã
-                                                      </Form.Label>
-                                                      <Form.Control
-                                                        type="text"
-                                                        name="maram"
-                                                        value={maram}
-                                                        id="maram"
-                                                      />
-                                                    </Form.Group>
-                                                    <Form.Group className="form-group">
-                                                      <Form.Label htmlFor="pwd">
-                                                        Dung lượng ram
-                                                      </Form.Label>
-                                                      <Form.Control
-                                                        type="text"
-                                                        placeholder="Nhập dung lượng ram"
-                                                        name="tenram"
-                                                        value={tenram}
-                                                        onChange={(e) =>
-                                                          onInputChangeFormram(
-                                                            e
-                                                          )
-                                                        }
-                                                        id="ten`"
-                                                      />
-                                                    </Form.Group>
-                                                  </Form>
-                                                </p>
+                                                <h2
+                                                  style={{
+                                                    marginBottom: `2%`,
+                                                    textAlign: `center`,
+                                                    fontSize: `27px`,
+                                                  }}
+                                                >
+                                                  Thêm ram
+                                                </h2>
+
+                                                <FormLabel
+                                                  style={{
+                                                    marginLeft: `9px`,
+                                                    fontSize: `14px`,
+                                                  }}
+                                                >
+                                                  {" "}
+                                                  Độ phân giải ram{" "}
+                                                </FormLabel>
+                                                <TextField
+                                                  label=""
+                                                  id="fullWidth"
+                                                  name="capacityRam"
+                                                  value={ramForm.capacityRam}
+                                                  onChange={(e) =>
+                                                    onInputChangeFormram(e)
+                                                  }
+                                                  error={
+                                                    (formSubmitted &&
+                                                      !ramForm.capacityRam) ||
+                                                    !!capacityRamError
+                                                  }
+                                                  helperText={
+                                                    capacityRamError ||
+                                                    (formSubmitted &&
+                                                      !ramForm.capacityRam &&
+                                                      "Kích thước rom không được trống")
+                                                  }
+                                                  style={{ width: "100%" }}
+                                                />
                                               </Modal>
 
                                               <FormControl
@@ -2699,42 +2996,72 @@ const ThemSanPham = () => {
                                               <Modal
                                                 title="Thêm màu sắc"
                                                 open={openFormmauSac}
-                                                onOk={handleOkFormmauSac}
                                                 confirmLoading={confirmLoading}
                                                 onCancel={handleCancel}
+                                                footer={[
+                                                  <Button
+                                                    type="danger"
+                                                    style={{
+                                                      height: 40,
+                                                      marginRight: `3%`,
+                                                    }}
+                                                    onClick={handleCancel}
+                                                  >
+                                                    Huỷ
+                                                  </Button>,
+                                                  <Button
+                                                    type="primary"
+                                                    loading={loading}
+                                                    style={{
+                                                      height: 40,
+                                                      marginRight: `36%`,
+                                                    }}
+                                                    onClick={handleOkFormmauSac}
+                                                  >
+                                                    + Thêm mới
+                                                  </Button>,
+                                                ]}
                                               >
-                                                <p>
-                                                  <Form>
-                                                    <Form.Group className="form-group">
-                                                      <Form.Label htmlFor="email">
-                                                        Mã
-                                                      </Form.Label>
-                                                      <Form.Control
-                                                        type="text"
-                                                        name="mamauSac"
-                                                        value={mamauSac}
-                                                        id="mamauSac"
-                                                      />
-                                                    </Form.Group>
-                                                    <Form.Group className="form-group">
-                                                      <Form.Label htmlFor="pwd">
-                                                        Tên màu sắc{" "}
-                                                      </Form.Label>
-                                                      <Form.Control
-                                                        type="text"
-                                                        placeholder="Nhập tên màu sắc"
-                                                        name="tenmauSac"
-                                                        value={tenmauSac}
-                                                        onChange={(e) =>
-                                                          onInputChangeFormmauSac(
-                                                            e
-                                                          )
-                                                        }
-                                                        id="ten`"
-                                                      />
-                                                    </Form.Group>
-                                                  </Form>
-                                                </p>
+                                                <h2
+                                                  style={{
+                                                    marginBottom: `2%`,
+                                                    textAlign: `center`,
+                                                    fontSize: `27px`,
+                                                  }}
+                                                >
+                                                  Thêm màu
+                                                </h2>
+
+                                                <FormLabel
+                                                  style={{
+                                                    marginLeft: `9px`,
+                                                    fontSize: `14px`,
+                                                  }}
+                                                >
+                                                  {" "}
+                                                  Tên màu{" "}
+                                                </FormLabel>
+                                                <TextField
+                                                  label=""
+                                                  id="fullWidth"
+                                                  name="nameColor"
+                                                  value={mauSacForm.nameColor}
+                                                  onChange={(e) =>
+                                                    onInputChangeFormmauSac(e)
+                                                  }
+                                                  error={
+                                                    (formSubmitted &&
+                                                      !mauSacForm.nameColor) ||
+                                                    !!nameColorError
+                                                  }
+                                                  helperText={
+                                                    nameColorError ||
+                                                    (formSubmitted &&
+                                                      !mauSacForm.nameColor &&
+                                                      "Tên màu không được trống")
+                                                  }
+                                                  style={{ width: "100%" }}
+                                                />
                                               </Modal>
 
                                               <FormControl
@@ -2883,6 +3210,15 @@ const ThemSanPham = () => {
         </>
         <br />
       </Form>
+
+      <Modal
+            title="Xác nhận"
+            open={openModalConfirm}
+            onOk={handleClickStepThree}
+            onCancel={() => setOpenModalConfirm(false)}
+          >
+            Bạn có chắc tạo sản phẩm này ?
+      </Modal>
     </div>
   );
 };
